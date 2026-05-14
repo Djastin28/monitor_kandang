@@ -12,8 +12,8 @@
 // KONFIGURASI — sesuaikan dengan Supabase project kamu
 // ============================================================
 
-const SUPABASE_URL = "https://iypfmqutatzkaiuebnrb.supabase.co";
-const SUPABASE_KEY = "sb_publishable_1EB2aj89OPPBFpTc8f9vuw_5nzuIclm";
+const SUPABASE_URL = "https://vdwmxedqzcqvzinptyxm.supabase.co";
+const SUPABASE_KEY = "sb_publishable_B29gHx9O7825GfjRaCBQTg_KeDSdqG0";
 
 // API backend — Vercel Serverless Functions
 // Di production: otomatis pakai domain Vercel kamu (tidak perlu diubah)
