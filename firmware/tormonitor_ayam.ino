@@ -24,12 +24,15 @@
 // KONFIGURASI — WAJIB DIISI
 // ═══════════════════════════════════════════════════════════════
 
+// const char* WIFI_SSID = "Djastin";
+// const char* WIFI_PASS = "123456789";
+
 const char* WIFI_SSID = "telurdadar";
 const char* WIFI_PASS = "telurdadar";
 
 // Ganti dengan URL Vercel kamu setelah deploy
 // Contoh: "https://tormonitor-ayam.vercel.app"
-const char* API_BASE = "https://ayamkampus-9nnq.vercel.app";
+const char* API_BASE = "https://monitor-kandang.vercel.app";
 
 // ── Pin Hardware ──────────────────────────────────────────────
 #define DHT_PIN 4 // DHT22 data pin
