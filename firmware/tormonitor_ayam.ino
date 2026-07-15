@@ -44,16 +44,20 @@ const char* API_BASE = "https://monitor-kandang.vercel.app";
 const int RELAY[RELAY_COUNT] = { 17, 5, 18, 19, 14, 27, 26, 25 };
 
 // ── Interval polling ─────────────────────────────────────────
-#define INTERVAL_SENSOR 5000 // kirim sensor tiap 5 detik
-#define INTERVAL_POLL 2000 // polling relay tiap 2 detik
+#define INTERVAL_SENSOR 2000 // kirim sensor tiap 2 detik
+#define INTERVAL_POLL 1000 // polling relay tiap 2 detik
 
 // ── DHT Retry ────────────────────────────────────────────────
 #define DHT_RETRY_MAX 3
 #define DHT_RETRY_DELAY 600
 
-// ── Suhu threshold relay5 ─────────────────────────────────────
+// ── Suhu threshold relay5 (kipas/cooler) ─────────────────────
 #define RELAY5_IDX 3
-#define SUHU_THRESHOLD 28.0f
+#define SUHU_THRESHOLD_HIGH 31.1f
+
+// ── Suhu threshold relay1 (lampu pemanas) ────────────────────
+#define LAMP_IDX 2
+#define SUHU_THRESHOLD_LOW 31.0f
 
 // ═══════════════════════════════════════════════════════════════
 // GLOBAL
@@ -152,20 +156,38 @@ bool bacaDHT(float& suhu, float& kelembapan) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// KONTROL RELAY5 OTOMATIS BERDASARKAN SUHU
+// KONTROL RELAY5 OTOMATIS BERDASARKAN SUHU (kipas/cooler)
 // Aktif LOW: LOW = relay ON, HIGH = relay OFF
-// suhu > 28°C → relay5 ON (kipas/cooler menyala)
-// suhu ≤ 28°C → relay5 OFF
+// suhu > 31°C → relay5 ON (kipas/cooler menyala)
+// suhu ≤ 31°C → relay5 OFF
 // ═══════════════════════════════════════════════════════════════
 
 void kontrolRelay5Suhu(float suhu) {
- bool harusNyala = (suhu > SUHU_THRESHOLD);
+ bool harusNyala = (suhu > SUHU_THRESHOLD_HIGH);
 
  if (harusNyala != relayState[RELAY5_IDX]) {
  relayState[RELAY5_IDX] = harusNyala;
  digitalWrite(RELAY[RELAY5_IDX], harusNyala ? LOW : HIGH); // aktif LOW
  Serial.printf("[RELAY5] Suhu=%.1f°C → relay5 (GPIO%d) %s\n",
  suhu, RELAY[RELAY5_IDX], harusNyala ? "ON (kipas/cooler)" : "OFF");
+ }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KONTROL RELAY1 OTOMATIS BERDASARKAN SUHU (lampu pemanas)
+// Aktif LOW: LOW = relay ON, HIGH = relay OFF
+// suhu < 30°C → relay1 ON (lampu pemanas menyala)
+// suhu ≥ 30°C → relay1 OFF
+// ═══════════════════════════════════════════════════════════════
+
+void kontrolLampuSuhu(float suhu) {
+ bool harusNyala = (suhu < SUHU_THRESHOLD_LOW);
+
+ if (harusNyala != relayState[LAMP_IDX]) {
+ relayState[LAMP_IDX] = harusNyala;
+ digitalWrite(RELAY[LAMP_IDX], harusNyala ? LOW : HIGH); // aktif LOW
+ Serial.printf("[LAMPU] Suhu=%.1f°C → relay1 (GPIO%d) %s\n",
+ suhu, RELAY[LAMP_IDX], harusNyala ? "ON (lampu pemanas)" : "OFF");
  }
 }
 
@@ -188,8 +210,9 @@ void kirimSensor() {
  }
  Serial.printf("[DHT] Suhu=%.1f°C Kelembapan=%.1f%%\n", suhu, kelembapan);
 
- // Kontrol relay5 otomatis berdasarkan suhu
- kontrolRelay5Suhu(suhu);
+ // Kontrol relay otomatis berdasarkan suhu
+ kontrolRelay5Suhu(suhu); // kipas/cooler jika panas
+ kontrolLampuSuhu(suhu); // lampu pemanas jika dingin
 
  // Baca ultrasonik
  float jarak = bacaUltrasonik();
@@ -266,9 +289,9 @@ void pollRelay() {
  "relay1", "relay2", "relay3", "relay4"
  };
  for (int i = 0; i < RELAY_COUNT; i++) {
- // ✅ FIX: Skip relay5 — dikontrol otomatis oleh sensor suhu
- // Mencegah server menimpa state relay5 yang diatur kontrolRelay5Suhu()
- if (i == RELAY5_IDX) continue;
+ // ✅ FIX: Skip relay5 (kipas) & relay1 (lampu) — dikontrol otomatis oleh sensor suhu
+ // Mencegah server menimpa state relay yang diatur kontrolRelay5Suhu()/kontrolLampuSuhu()
+ if (i == RELAY5_IDX || i == LAMP_IDX) continue;
 
  if (doc.containsKey(relayKeys[i])) {
  bool nyala = doc[relayKeys[i]].as<bool>();
@@ -295,9 +318,9 @@ void pollRelay() {
 void terapkanRelay(JsonObject pins) {
  if (pins.isNull()) return;
  for (int i = 0; i < RELAY_COUNT; i++) {
- // ✅ FIX: Skip relay5 — dikontrol otomatis oleh sensor suhu
- // Mencegah response /api/sensor menimpa state relay5
- if (i == RELAY5_IDX) continue;
+ // ✅ FIX: Skip relay5 (kipas) & relay1 (lampu) — dikontrol otomatis oleh sensor suhu
+ // Mencegah response /api/sensor menimpa state relay yang dikontrol otomatis
+ if (i == RELAY5_IDX || i == LAMP_IDX) continue;
 
  String key = "V" + String(10 + i);
  if (!pins.containsKey(key)) continue;
